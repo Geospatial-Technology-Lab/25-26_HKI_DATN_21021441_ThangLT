@@ -134,12 +134,16 @@ def create_cnn_env_factory(patch_list, obs_patch_size=11):
         weights = np.array(weights) / np.sum(weights)
         patch = np.random.choice(patch_list, p=weights)
         
+        # Use shorter max_steps so episodes complete and rewards are tracked
+        max_steps = min(50, patch['thermal_data'].size // 20)
+        max_steps = max(20, max_steps)  # At least 20 steps
+        
         return CNNCropThermalEnv(
             thermal_data=patch['thermal_data'],
             start_pos=patch['start_pos'],
             weather_patches=patch['weather_patches'],
             landcover_data=patch['landcover_data'],
-            max_steps=min(200, patch['thermal_data'].size // 10),
+            max_steps=max_steps,
             patch_size=obs_patch_size,
             verbose=False
         )
@@ -191,26 +195,62 @@ def train_model(trainer, algorithm: str, max_episodes: int, steps_per_update: in
     
     rewards_history = []
     best_reward = -float('inf')
+    total_steps = 0
+    total_episodes = 0
+    running_reward = 0.0
     
     for episode in tqdm(range(1, max_episodes + 1), desc=f"Training {algorithm.upper()}"):
         # Collect experience
         trainer.collect_experience(steps_per_update)
         
-        # Update agents
+        # Update agents and collect stats
+        episode_rewards = []
+        episodes_this_round = 0
+        
         for agent in trainer.agents:
             stats = agent.update() if hasattr(agent, 'update') else {}
+            
+            # Track cumulative episode reward
+            episode_rewards.append(agent.episode_reward)
+            
+            # Track completed episodes
+            if hasattr(agent, 'episodes_completed'):
+                episodes_this_round += agent.episodes_completed
+                total_episodes = max(total_episodes, agent.episodes_completed)
+            
+            # Also track reward from reward_history
+            if hasattr(agent, 'reward_history') and len(agent.reward_history) > 0:
+                episode_rewards.extend(agent.reward_history[-5:])  # Last 5 episodes
         
-        # Get average reward
-        avg_reward = np.mean([a.reward_mean for a in trainer.agents])
-        rewards_history.append(float(avg_reward))
+        # Compute average reward (use actual values, not just 0s)
+        if episode_rewards:
+            valid_rewards = [r for r in episode_rewards if r != 0]
+            if valid_rewards:
+                avg_reward = np.mean(valid_rewards)
+            else:
+                # Use cumulative step rewards if no completed episodes
+                step_rewards = []
+                for agent in trainer.agents:
+                    if hasattr(agent, 'rewards') and agent.rewards:
+                        step_rewards.extend(agent.rewards)
+                avg_reward = np.mean(step_rewards) if step_rewards else 0.0
+        else:
+            avg_reward = 0.0
+        
+        # Running average
+        running_reward = 0.9 * running_reward + 0.1 * avg_reward
+        rewards_history.append(float(running_reward))
+        
+        total_steps += steps_per_update * len(trainer.agents)
         
         # Log progress
         if episode % 10 == 0:
-            tqdm.write(f"Episode {episode:4d} | Avg Reward: {avg_reward:+8.2f}")
+            tqdm.write(f"Episode {episode:4d} | Reward: {running_reward:+8.2f} | "
+                      f"Steps: {total_steps:,} | Episodes: {total_episodes}")
         
         # Save best model
-        if avg_reward > best_reward:
-            best_reward = avg_reward
+        if running_reward > best_reward:
+            best_reward = running_reward
             trainer.best_reward = best_reward
             if hasattr(trainer, 'save_model'):
                 trainer.save_model()

@@ -1,0 +1,63 @@
+TIF FILES ALIGNMENT REPORT
+==================================================
+
+Reference (Thermal): C:/Users/unknown/Desktop/DRL/data/thermal_raster_final.tif
+Reference shape: (15132, 6442)
+Reference CRS: EPSG:32649
+Reference bounds: BoundingBox(left=87216.78957825992, bottom=1241390.020850487, right=282320.9821385909, top=1707342.269165312)
+
+File: landcover
+Original shape: (15133, 6443)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_landcover.tif
+------------------------------
+File: soil_moisture
+Original shape: (14986, 6099)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_soil_moisture.tif
+Data range: -0.868561 - 8.611423
+------------------------------
+File: rainfall
+Original shape: (14986, 6099)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_rainfall.tif
+Data range: -0.285627 - 4.008069
+------------------------------
+File: soil_temp
+Original shape: (15132, 6442)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_soil_temp.tif
+Data range: -45.422932 - 349.213043
+------------------------------
+File: wind_speed
+Original shape: (15132, 6442)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_wind_speed.tif
+Data range: -0.340037 - 3.665442
+------------------------------
+File: humidity
+Original shape: (14986, 6099)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_humidity.tif
+Data range: -0.001981 - 0.015155
+------------------------------
+File: ndmi
+Original shape: (15132, 6442)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_ndmi.tif
+Data range: -114.694672 - 16.031134
+------------------------------
+File: dem
+Original shape: (15132, 6442)
+Aligned shape: (15132, 6442)
+Alignment needed: True
+Aligned path: database\aligned_dem.tif
+Data range: -314.748108 - 2806.526855
+------------------------------

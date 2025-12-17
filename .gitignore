@@ -66,11 +66,5 @@ feature_importance_*/
 .DS_Store
 Thumbs.db
 
-# Database folder (contains large aligned TIF files)
-database/
-
-# Data folder (contains large raster files)
-data/
-
 # Cache
 .cache/

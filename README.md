@@ -4,7 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Đồ án tốt nghiệp - Đại học Khoa học Tự nhiên, ĐHQGHN**
+**Đồ án tốt nghiệp - Đại học Công nghệ, Đại học Quốc gia Hà Nội**
 
 Ứng dụng các thuật toán Deep Reinforcement Learning để phát hiện điểm nóng cháy rừng từ dữ liệu ảnh nhiệt và dữ liệu thời tiết.
 
@@ -218,8 +218,8 @@ Kết quả đánh giá các thuật toán được lưu trong thư mục `resul
 
 **Lê Toàn Thắng**
 - Mã sinh viên: 21021441
-- Trường: Đại học Khoa học Tự nhiên, ĐHQGHN
-- Email: [contact email]
+- Trường: Đại học Công nghệ, Đại học Quốc gia Hà Nội
+- Email: toanthangvietduc@gmail.com
 
 ---
 

@@ -36,9 +36,9 @@ env/
 # Jupyter Notebook
 .ipynb_checkpoints/
 
-# Data files (large)
-*.tif
-*.tiff
+# Data files (large) - Now tracked by Git LFS
+# *.tif  # Tracked by Git LFS
+# *.tiff # Tracked by Git LFS
 *.h5
 *.hdf5
 *.npy

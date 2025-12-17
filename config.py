@@ -225,3 +225,32 @@ if __name__ == "__main__":
     for name, valid in config.paths.validate_paths().items():
         status = "OK" if valid else "MISSING"
         print(f"  {name}: {status}")
+
+
+# ============================================================================
+# BACKWARD COMPATIBILITY EXPORTS
+# ============================================================================
+
+# PATHS dict for simple access
+PATHS = {
+    'thermal_tif': DEFAULT_CONFIG.paths.get_thermal_path(),
+    'landcover_tif': DEFAULT_CONFIG.paths.get_landcover_path(),
+    'humidity_tif': os.path.join(PROJECT_ROOT, 'database/aligned_humidity.tif'),
+    'wind_speed_tif': os.path.join(PROJECT_ROOT, 'database/aligned_wind_speed.tif'),
+    'soil_temp_tif': os.path.join(PROJECT_ROOT, 'database/aligned_soil_temp.tif'),
+    'soil_moisture_tif': os.path.join(PROJECT_ROOT, 'database/aligned_soil_moisture.tif'),
+    'rainfall_tif': os.path.join(PROJECT_ROOT, 'database/aligned_rainfall.tif'),
+    'ndmi_tif': os.path.join(PROJECT_ROOT, 'database/aligned_ndmi.tif'),
+    'dem_tif': os.path.join(PROJECT_ROOT, 'database/aligned_dem.tif'),
+}
+
+# TRAINING_CONFIG dict for simple access
+TRAINING_CONFIG = {
+    'num_workers': DEFAULT_CONFIG.training.num_workers,
+    'max_episodes': DEFAULT_CONFIG.training.max_episodes,
+    'batch_size': DEFAULT_CONFIG.training.batch_size,
+    'learning_rate': DEFAULT_CONFIG.training.learning_rate,
+    'gamma': DEFAULT_CONFIG.training.gamma,
+    'entropy_coeff': DEFAULT_CONFIG.training.entropy_coeff,
+    'value_coeff': DEFAULT_CONFIG.training.value_coeff,
+}

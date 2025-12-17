@@ -46,8 +46,9 @@ from utils.confusion_map import compute_confusion_overlay
 from utils.save_tif_confusion import save_tif_confusion
 from utils.save_combine_confusion import save_combine_confusion
 from utils.final_map import export_final_confusion_map
-from utils.thermal_reader import read_and_patch_thermal_image
-from utils.landcover_reader import read_and_align_landcover_to_thermal
+from prepare_data._crop_thermal_true_img import read_and_patch_thermal_image
+from prepare_data._preprocess_landcover import read_and_align_landcover_to_thermal
+from prepare_data._find_threshold import prepare_temp_data_balanced as prepare_temp_balanced_orig
 
 ALGORITHMS = ['a3c', 'a2c', 'ppo', 'dqn', 'sac', 'ddpg', 'vpg']
 

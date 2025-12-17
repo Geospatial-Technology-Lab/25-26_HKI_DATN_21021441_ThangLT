@@ -120,14 +120,25 @@ def create_prediction_map(agent, thermal_data, weather_patches,
 
 def compute_metrics(predictions, ground_truth, threshold=0.5):
     """Compute evaluation metrics"""
-    y_true = ground_truth.flatten()
-    y_pred_proba = predictions.flatten()
-    y_pred = (y_pred_proba >= threshold).astype(int)
-    
-    # Debug info
-    print(f"    Ground truth: {np.sum(y_true):.0f} fire pixels / {len(y_true)} total")
-    print(f"    Predictions: min={y_pred_proba.min():.4f}, max={y_pred_proba.max():.4f}, mean={y_pred_proba.mean():.4f}")
-    print(f"    Predicted fire: {np.sum(y_pred)} pixels (threshold={threshold})")
+    try:
+        print(f"    Debug: predictions shape={predictions.shape}, ground_truth shape={ground_truth.shape}")
+        print(f"    Debug: predictions dtype={predictions.dtype}, ground_truth dtype={ground_truth.dtype}")
+        print(f"    Debug: predictions has NaN={np.isnan(predictions).any()}, Inf={np.isinf(predictions).any()}")
+        
+        y_true = ground_truth.flatten()
+        y_pred_proba = predictions.flatten()
+        
+        # Handle NaN/Inf in predictions
+        if np.isnan(y_pred_proba).any() or np.isinf(y_pred_proba).any():
+            print(f"    Warning: Cleaning NaN/Inf values in predictions")
+            y_pred_proba = np.nan_to_num(y_pred_proba, nan=0.0, posinf=1.0, neginf=0.0)
+        
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        
+        # Debug info
+        print(f"    Ground truth: {np.sum(y_true):.0f} fire pixels / {len(y_true)} total")
+        print(f"    Predictions: min={y_pred_proba.min():.4f}, max={y_pred_proba.max():.4f}, mean={y_pred_proba.mean():.4f}")
+        print(f"    Predicted fire: {np.sum(y_pred)} pixels (threshold={threshold})")
     
     # Check for valid data
     if np.sum(y_true) == 0:
@@ -141,42 +152,41 @@ def compute_metrics(predictions, ground_truth, threshold=0.5):
         print("    Warning: All pixels are fire in ground truth")
         return None
     
-    try:
-        # Basic metrics
-        metrics = {}
-        
-        # AUC requires both classes
-        if len(np.unique(y_true)) > 1:
-            metrics['auc_roc'] = float(roc_auc_score(y_true, y_pred_proba))
-            metrics['auc_pr'] = float(average_precision_score(y_true, y_pred_proba))
+    # Basic metrics
+    metrics = {}
+    
+    # AUC requires both classes
+    if len(np.unique(y_true)) > 1:
+        metrics['auc_roc'] = float(roc_auc_score(y_true, y_pred_proba))
+        metrics['auc_pr'] = float(average_precision_score(y_true, y_pred_proba))
+    else:
+        metrics['auc_roc'] = 0.5
+        metrics['auc_pr'] = float(np.mean(y_true))
+    
+    metrics['f1'] = float(f1_score(y_true, y_pred, zero_division=0))
+    metrics['precision'] = float(precision_score(y_true, y_pred, zero_division=0))
+    metrics['recall'] = float(recall_score(y_true, y_pred, zero_division=0))
+    
+    # Confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    if cm.shape == (2, 2):
+        tn, fp, fn, tp = cm.ravel()
+    else:
+        # Handle single class case
+        if np.sum(y_true) == 0:
+            tn, fp, fn, tp = cm[0, 0], 0, 0, 0
         else:
-            metrics['auc_roc'] = 0.5
-            metrics['auc_pr'] = np.mean(y_true)
-        
-        metrics['f1'] = float(f1_score(y_true, y_pred, zero_division=0))
-        metrics['precision'] = float(precision_score(y_true, y_pred, zero_division=0))
-        metrics['recall'] = float(recall_score(y_true, y_pred, zero_division=0))
-        
-        # Confusion matrix
-        cm = confusion_matrix(y_true, y_pred)
-        if cm.shape == (2, 2):
-            tn, fp, fn, tp = cm.ravel()
-        else:
-            # Handle single class case
-            if np.sum(y_true) == 0:
-                tn, fp, fn, tp = cm[0, 0], 0, 0, 0
-            else:
-                tn, fp, fn, tp = 0, 0, 0, cm[0, 0]
-        
-        metrics.update({
-            'true_positives': int(tp),
-            'false_positives': int(fp),
-            'true_negatives': int(tn),
-            'false_negatives': int(fn),
-            'accuracy': float((tp + tn) / max(1, tp + tn + fp + fn))
-        })
-        
-        return metrics
+            tn, fp, fn, tp = 0, 0, 0, cm[0, 0]
+    
+    metrics.update({
+        'true_positives': int(tp),
+        'false_positives': int(fp),
+        'true_negatives': int(tn),
+        'false_negatives': int(fn),
+        'accuracy': float((tp + tn) / max(1, tp + tn + fp + fn))
+    })
+    
+    return metrics
         
     except Exception as e:
         print(f"    Error computing metrics: {e}")

@@ -182,8 +182,13 @@ def evaluate_single_patch(patch_data, agent, device, patch_coords, transform_aff
         y_true_flat = y_true.flatten()
         y_pred_proba = predictions.flatten()
         
-        # Adaptive threshold
-        threshold = max(0.1, np.percentile(y_pred_proba, 90))
+        # Use dynamic threshold based on actual model output distribution
+        # Model outputs are typically low (0.01-0.15), so use mean + std
+        if y_pred_proba.max() > 0.3:
+            threshold = 0.3  # High confidence outputs
+        else:
+            threshold = max(0.05, np.mean(y_pred_proba) + np.std(y_pred_proba))
+        
         y_pred = (y_pred_proba >= threshold).astype(int)
         
         # Metrics

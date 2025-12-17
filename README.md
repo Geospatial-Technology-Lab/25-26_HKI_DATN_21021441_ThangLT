@@ -4,60 +4,60 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Đồ án tốt nghiệp - Đại học Công nghệ, Đại học Quốc gia Hà Nội**
+**Bachelor's Thesis - University of Engineering and Technology, Vietnam National University Hanoi**
 
-Ứng dụng các thuật toán Deep Reinforcement Learning để phát hiện điểm nóng cháy rừng từ dữ liệu ảnh nhiệt và dữ liệu thời tiết.
+A comprehensive framework applying Deep Reinforcement Learning algorithms for wildfire hotspot detection using thermal imagery and weather data.
 
-## 📋 Mục Lục
+## 📋 Table of Contents
 
-- [Tổng Quan](#-tổng-quan)
-- [Tính Năng Mới](#-tính-năng-mới-v20)
-- [Thuật Toán](#-thuật-toán-được-triển-khai)
-- [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
-- [Cài Đặt](#-cài-đặt)
-- [Sử Dụng](#-sử-dụng)
-- [Kết Quả](#-kết-quả)
+- [Overview](#-overview)
+- [New Features](#-new-features-v20)
+- [Algorithms](#-implemented-algorithms)
+- [Project Structure](#-project-structure)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Results](#-results)
 
 ---
 
-## 🎯 Tổng Quan
+## 🎯 Overview
 
-Dự án này nghiên cứu và so sánh hiệu quả của các thuật toán Deep Reinforcement Learning trong bài toán phát hiện cháy rừng. Agent di chuyển trên bản đồ nhiệt và đưa ra dự đoán vị trí có nguy cơ cháy dựa trên:
+This project researches and compares the effectiveness of Deep Reinforcement Learning algorithms for wildfire detection. The agent navigates through thermal maps and predicts fire risk locations based on:
 
-- **Dữ liệu nhiệt độ** (Thermal imagery)
-- **Dữ liệu thời tiết**: độ ẩm, tốc độ gió, lượng mưa, nhiệt độ đất
-- **Dữ liệu địa hình**: DEM, NDMI, Land cover
+- **Thermal Data** (Satellite thermal imagery)
+- **Weather Data**: humidity, wind speed, rainfall, soil temperature
+- **Terrain Data**: DEM, NDMI, Land cover
 
-### Đặc Điểm Nổi Bật
+### Key Features
 
-- ✅ So sánh **10+ thuật toán** RL/DRL
-- ✅ **CNN-based Observation** (8 channels × 11×11)
-- ✅ **ICM Exploration** (Curiosity-driven)
+- ✅ Comparison of **10+ RL/DRL algorithms**
+- ✅ **CNN-based Observation** (8 channels × 11×11 spatial features)
+- ✅ **ICM Exploration** (Curiosity-driven exploration)
 - ✅ **Balanced Reward Structure**
-- ✅ Hỗ trợ **GPU acceleration** (CUDA)
-- ✅ **Parallel training** với multi-agent
+- ✅ **GPU Acceleration** (CUDA support)
+- ✅ **Multi-agent Parallel Training**
 
 ---
 
-## 🆕 Tính Năng Mới (v2.0)
+## 🆕 New Features (v2.0)
 
 ### 1. CNN-based Observation
-- Observation space: `[8, 11, 11]` thay vì 1D vector
+- Observation space: `[8, 11, 11]` instead of 1D vector
 - 8 channels: thermal, humidity, wind_speed, soil_temp, soil_moisture, rainfall, ndmi, dem
-- Học được spatial patterns (fire edges, spread direction)
+- Enables learning spatial patterns (fire edges, spread direction)
 
 ### 2. ICM Exploration (Intrinsic Curiosity Module)
-- Curiosity-driven exploration
-- Intrinsic rewards dựa trên prediction error
-- Giúp agent khám phá tốt hơn trong sparse reward environments
+- Curiosity-driven exploration mechanism
+- Intrinsic rewards based on prediction error
+- Improves exploration in sparse reward environments
 
 ### 3. Balanced Reward Structure
-- `false_positive_penalty`: 300 → 50 (giảm)
-- `false_negative_penalty`: 50 → 100 (tăng)
-- Thêm `proximity_reward_scale` và `discovery_bonus`
+- `false_positive_penalty`: 300 → 50 (reduced)
+- `false_negative_penalty`: 50 → 100 (increased)
+- Added `proximity_reward_scale` and `discovery_bonus`
 
 ### 4. Integrated Models
-Tất cả 7 DRL algorithms đều có phiên bản tích hợp với CNN + ICM:
+All 7 DRL algorithms have integrated versions with CNN + ICM:
 
 | Algorithm | Integrated File |
 |-----------|-----------------|
@@ -71,22 +71,22 @@ Tất cả 7 DRL algorithms đều có phiên bản tích hợp với CNN + ICM:
 
 ---
 
-## 🧠 Thuật Toán Được Triển Khai
+## 🧠 Implemented Algorithms
 
 ### Deep Reinforcement Learning
-| Thuật toán | Mô tả | Files |
-|------------|-------|-------|
+| Algorithm | Description | Files |
+|-----------|-------------|-------|
 | **A3C** | Asynchronous Advantage Actor-Critic | `a3c/a3c.py`, `a3c/integrated_a3c.py` |
 | **PPO** | Proximal Policy Optimization | `ppo/ppo.py`, `ppo/integrated_ppo.py` |
-| **DQN** | Deep Q-Network (Dueling Double DQN) | `dqn/dqn.py`, `dqn/integrated_dqn.py` |
+| **DQN** | Dueling Double Deep Q-Network | `dqn/dqn.py`, `dqn/integrated_dqn.py` |
 | **SAC** | Soft Actor-Critic (Discrete) | `sac/sac.py`, `sac/integrated_sac.py` |
 | **DDPG** | Deep Deterministic Policy Gradient | `ddpg/ddpg.py`, `ddpg/integrated_ddpg.py` |
-| **VPG** | Vanilla Policy Gradient | `vpg/vpg.py`, `vpg/integrated_vpg.py` |
+| **VPG** | Vanilla Policy Gradient (REINFORCE) | `vpg/vpg.py`, `vpg/integrated_vpg.py` |
 | **A2C** | Advantage Actor-Critic | `a2c/a2c.py`, `a2c/integrated_a2c.py` |
 
 ### Classical RL & Planning
-| Thuật toán | Mô tả | File |
-|------------|-------|------|
+| Algorithm | Description | Directory |
+|-----------|-------------|-----------|
 | **Q-Learning** | Tabular Q-Learning | `q_learning/` |
 | **Value Iteration** | Dynamic Programming | `value_iteration/` |
 | **Policy Iteration** | Dynamic Programming | `policy_iteration/` |
@@ -94,7 +94,7 @@ Tất cả 7 DRL algorithms đều có phiên bản tích hợp với CNN + ICM:
 
 ---
 
-## 📁 Cấu Trúc Dự Án
+## 📁 Project Structure
 
 ```
 DRL_Thesis/
@@ -108,34 +108,34 @@ DRL_Thesis/
 │   ├── icm.py                  # Intrinsic Curiosity Module (NEW)
 │   └── __init__.py
 │
-├── 📂 a3c/
+├── 📂 a3c/                     # A3C implementation
 │   ├── a3c.py                  # Original A3C
 │   ├── a3c_main.py             # Training script
 │   └── integrated_a3c.py       # CNN + ICM integrated (NEW)
 │
-├── 📂 [other algorithms]/      # Similar structure
+├── 📂 [other algorithms]/      # Similar structure for each algorithm
 │
-├── 📂 examples/
-│   └── train_integrated.py     # Example training script
+├── 📂 prepare_data/            # Data preprocessing utilities
+├── 📂 utils/                   # Evaluation & visualization utilities
 │
 ├── train_integrated_main.py    # Unified training script (NEW)
-├── evaluate_integrated.py      # Quick evaluation (NEW)
+├── evaluate_integrated.py      # Quick evaluation script (NEW)
 ├── evaluate_integrated_full.py # Full patch evaluation (NEW)
-├── config.py                   # Configuration
+├── config.py                   # Centralized configuration
 └── README.md
 ```
 
 ---
 
-## 🛠 Cài Đặt
+## 🛠 Installation
 
-### Yêu Cầu
+### Requirements
 
 - Python 3.8+
-- CUDA 11.0+ (optional, for GPU)
+- CUDA 11.0+ (optional, for GPU acceleration)
 - Git LFS (for large data files)
 
-### Cài Đặt
+### Setup
 
 ```bash
 # Install Git LFS first
@@ -150,30 +150,34 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 
-# Install dependencies
+# Install PyTorch with CUDA
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# Install other dependencies
 pip install numpy pandas matplotlib scipy rasterio tqdm gym scikit-learn
 ```
 
 ---
 
-## 🚀 Sử Dụng
+## 🚀 Usage
 
-### 1. Training với Integrated Models (Khuyên dùng)
+### 1. Training with Integrated Models (Recommended)
 
 ```bash
-# Train A3C với CNN + ICM
+# Train A3C with CNN + ICM
 python train_integrated_main.py --algorithm a3c --episodes 500 --device cuda
 
 # Train PPO
 python train_integrated_main.py --algorithm ppo --episodes 500 --device cuda
 
-# Train tất cả algorithms
+# Train all algorithms
 for algo in a3c a2c ppo dqn sac ddpg vpg; do
     python train_integrated_main.py --algorithm $algo --episodes 500 --device cuda
 done
+```
 
-# Options
+**Available Options:**
+```bash
 python train_integrated_main.py --help
   --algorithm    # a3c, a2c, ppo, dqn, sac, ddpg, vpg
   --episodes     # Number of training episodes (default: 500)
@@ -189,7 +193,7 @@ python train_integrated_main.py --help
 # Quick evaluation (sample region)
 python evaluate_integrated.py --algorithm a3c --device cuda
 
-# Full evaluation (all patches - like a3c_main.py)
+# Full evaluation (all patches)
 python evaluate_integrated_full.py --algorithm a3c --device cuda
 
 # Limit patches for faster testing
@@ -199,7 +203,7 @@ python evaluate_integrated_full.py --algorithm a3c --device cuda --max_patches 1
 python evaluate_integrated_full.py --algorithm all --device cuda --max_patches 100
 ```
 
-### 3. Training với Original Models
+### 3. Training with Original Models
 
 ```bash
 # A3C original
@@ -211,39 +215,41 @@ cd dqn && python dqn_main.py
 
 ---
 
-## 📊 Dữ Liệu
+## 📊 Data
 
-### Cấu Trúc Dữ Liệu
+### Data Structure
 
 ```
 data/
-└── thermal_raster_final.tif    # Ảnh nhiệt (15132 × 6442)
+└── thermal_raster_final.tif    # Thermal imagery (15132 × 6442)
 
 database/
-├── aligned_landcover.tif       # Land cover
-├── aligned_humidity.tif        # Độ ẩm
-├── aligned_wind_speed.tif      # Tốc độ gió
-├── aligned_rainfall.tif        # Lượng mưa
-├── aligned_soil_temp.tif       # Nhiệt độ đất
-├── aligned_soil_moisture.tif   # Độ ẩm đất
+├── aligned_landcover.tif       # Land cover classification
+├── aligned_humidity.tif        # Humidity data
+├── aligned_wind_speed.tif      # Wind speed data
+├── aligned_rainfall.tif        # Rainfall data
+├── aligned_soil_temp.tif       # Soil temperature
+├── aligned_soil_moisture.tif   # Soil moisture
 ├── aligned_dem.tif             # Digital Elevation Model
-└── aligned_ndmi.tif            # NDMI index
+└── aligned_ndmi.tif            # Normalized Difference Moisture Index
 ```
+
+> **Note**: Large data files are tracked with Git LFS.
 
 ---
 
-## 📈 Kết Quả
+## 📈 Results
 
-Kết quả đánh giá được lưu trong `{algorithm}_results/`:
+Evaluation results are saved in `{algorithm}_results/`:
 
-- `training_results.json` - Training history
-- `full_evaluation_results.csv` - Per-patch metrics
-- `full_evaluation_summary.json` - Summary metrics
-- `evaluation_plot.png` - Visualization
+- `training_results.json` - Training history and rewards
+- `full_evaluation_results.csv` - Per-patch evaluation metrics
+- `full_evaluation_summary.json` - Average metrics summary
+- `evaluation_plot.png` - Prediction visualization
 
-### Metrics
-| Metric | Mô tả |
-|--------|-------|
+### Evaluation Metrics
+| Metric | Description |
+|--------|-------------|
 | AUC-ROC | Area Under ROC Curve |
 | PR-AUC | Area Under Precision-Recall Curve |
 | F1 | Harmonic mean of Precision & Recall |
@@ -252,38 +258,38 @@ Kết quả đánh giá được lưu trong `{algorithm}_results/`:
 
 ---
 
-## 🔧 Tính Năng Tối Ưu
+## 🔧 Technical Details
 
-### CNN Environment (`cnn_env.py`)
-- Observation: `[8, 11, 11]` spatial features
-- Integrated balanced rewards
-- Proximity and discovery bonuses
+### CNN Environment (`environment/cnn_env.py`)
+- Observation space: `[8, 11, 11]` spatial tensor
+- Integrated balanced reward structure
+- Proximity and discovery bonus rewards
 
 ### ICM Module (`models/icm.py`)
-- `CNNIntrinsicCuriosityModule` for CNN observations
-- Forward/Inverse model for curiosity
-- Configurable intrinsic reward scale
+- `CNNIntrinsicCuriosityModule` for spatial observations
+- Forward/Inverse model architecture
+- Configurable intrinsic reward scaling
 
-### Training Optimizations
-- Multi-agent parallel training
-- GPU acceleration (batch size 1024)
-- Running reward averaging
+### Optimizations
+- Multi-agent parallel experience collection
+- GPU-accelerated batch processing (batch size: 1024)
+- LRU caching for observations
 - Periodic model checkpointing
 
 ---
 
-## 👤 Tác Giả
+## 👤 Author
 
-**Lê Toàn Thắng**
-- Mã sinh viên: 21021441
-- Trường: Đại học Công nghệ, Đại học Quốc gia Hà Nội
+**Le Toan Thang**
+- Student ID: 21021441
+- University: University of Engineering and Technology, VNU Hanoi
 - Email: toanthangvietduc@gmail.com
 
 ---
 
 ## 📄 License
 
-MIT License - Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

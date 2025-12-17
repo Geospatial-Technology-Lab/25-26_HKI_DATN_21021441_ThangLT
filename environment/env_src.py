@@ -49,13 +49,17 @@ class EnhancedCropThermalEnv(gym.Env):
         
         self.landcover_data = landcover_data if landcover_data is not None else np.ones_like(thermal_data)
         
-        # Balanced reward parameters
+        # IMPROVED: Balanced reward parameters
         self.true_positive_reward = 100.0
-        self.false_positive_penalty = 300.0  # Significantly increased
-        self.true_negative_reward = 10.0     # Increased
-        self.false_negative_penalty = 50.0
-        self.exploration_reward = 0.1        # Reduced
-        self.movement_cost = 0.2             # Increased
+        self.false_positive_penalty = 50.0   # Reduced from 300 - allow exploration
+        self.true_negative_reward = 1.0      # Reduced from 10 - TN is common
+        self.false_negative_penalty = 100.0  # Increased from 50 - missing fire is bad
+        self.exploration_reward = 0.5        # Increased from 0.1
+        self.movement_cost = 0.1             # Reduced from 0.2
+        
+        # NEW: Shaped reward parameters
+        self.proximity_reward_scale = 5.0    # Bonus for being near fire
+        self.discovery_bonus = 2.0           # Bonus for finding high-temp areas
 
         self.high_temp_threshold = high_temp_threshold
         self.medium_temp_threshold = medium_temp_threshold
@@ -119,6 +123,19 @@ class EnhancedCropThermalEnv(gym.Env):
         
         # Pre-compute neighborhood statistics for faster lookups
         self._precompute_neighborhood_stats()
+        
+        # Pre-compute distance to nearest fire for shaped rewards
+        self._precompute_fire_distances()
+    
+    def _precompute_fire_distances(self):
+        """Pre-compute distance to nearest fire pixel for shaped rewards"""
+        from scipy.ndimage import distance_transform_edt
+        # Distance transform: each non-fire pixel gets distance to nearest fire
+        self._fire_distance_map = distance_transform_edt(~self.fire_ground_truth)
+        # Normalize to [0, 1] range
+        max_dist = np.max(self._fire_distance_map)
+        if max_dist > 0:
+            self._fire_distance_map = self._fire_distance_map / max_dist
     
     def _precompute_neighborhood_stats(self):
         """Pre-compute neighborhood statistics for all positions using vectorized operations"""
@@ -461,12 +478,28 @@ class EnhancedCropThermalEnv(gym.Env):
             fire_prob = self._calculate_fire_probability(new_pos)
             reward += self.exploration_reward * fire_prob
             self.visited_positions.add(new_pos)
+            
+            # NEW: Discovery bonus for finding high-temp areas
+            new_temp = self.thermal_data[new_pos[0], new_pos[1]]
+            if new_temp >= self.high_temp_threshold:
+                reward += self.discovery_bonus * 2.0
+            elif new_temp >= self.medium_temp_threshold:
+                reward += self.discovery_bonus
         
         # Reward for moving toward higher temperatures
         current_temp = self.thermal_data[self.current_pos[0], self.current_pos[1]]
         new_temp = self.thermal_data[new_pos[0], new_pos[1]]
         if new_temp > current_temp and new_temp > self.medium_temp_threshold:
             reward += 0.5
+        
+        # NEW: Proximity-based shaped reward
+        if hasattr(self, '_fire_distance_map'):
+            current_dist = self._fire_distance_map[self.current_pos[0], self.current_pos[1]]
+            new_dist = self._fire_distance_map[new_pos[0], new_pos[1]]
+            # Reward for getting closer to fire
+            if new_dist < current_dist:
+                proximity_bonus = (current_dist - new_dist) * self.proximity_reward_scale
+                reward += proximity_bonus
         
         return reward
 

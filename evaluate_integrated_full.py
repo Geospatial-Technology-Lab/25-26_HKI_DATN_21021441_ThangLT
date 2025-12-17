@@ -80,15 +80,24 @@ def prepare_temp_data_balanced(T_Celsius):
     return T_Celsius, normalized_temp, y_true_binary, min_temp, max_temp
 
 
-def process_weather_patches(weather_data, coord):
-    """Extract weather patches for a given coordinate region"""
-    y1, x1, y2, x2 = coord
+def process_weather_patches(weather_data, coord, patch_size=100):
+    """Extract weather patches for a given coordinate region
+    
+    Args:
+        weather_data: dict of weather arrays
+        coord: tuple of (y_start, x_start) from patch_coords
+        patch_size: size of patch (default 100)
+    """
+    y_start, x_start = coord
     patches = {}
     for name, data in weather_data.items():
-        if data.shape[0] > y2 and data.shape[1] > x2:
-            patches[name] = normalize_array(data[y1:y2, x1:x2])
+        y_end = min(y_start + patch_size, data.shape[0])
+        x_end = min(x_start + patch_size, data.shape[1])
+        
+        if y_start < data.shape[0] and x_start < data.shape[1]:
+            patches[name] = normalize_array(data[y_start:y_end, x_start:x_end])
         else:
-            patches[name] = np.zeros((y2-y1, x2-x1))
+            patches[name] = np.zeros((patch_size, patch_size))
     return patches
 
 

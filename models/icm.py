@@ -297,8 +297,13 @@ class CNNIntrinsicCuriosityModule(nn.Module):
         inverse_input = torch.cat([phi_s, phi_s_next], dim=-1)
         pred_action = self.inverse_model(inverse_input)
         
-        action_onehot = torch.zeros(action.size(0), self.action_size, device=state.device)
-        action_onehot.scatter_(1, action.unsqueeze(1), 1)
+        # Ensure action is 1D tensor for scatter
+        if action.dim() == 0:
+            action = action.unsqueeze(0)
+        
+        batch_size = phi_s.size(0)
+        action_onehot = torch.zeros(batch_size, self.action_size, device=state.device)
+        action_onehot.scatter_(1, action.view(-1, 1), 1)
         forward_input = torch.cat([phi_s, action_onehot], dim=-1)
         pred_next_features = self.forward_model(forward_input)
         
@@ -309,8 +314,17 @@ class CNNIntrinsicCuriosityModule(nn.Module):
         if state.dim() == 3:
             state = state.unsqueeze(0)
             next_state = next_state.unsqueeze(0)
-            action = action.unsqueeze(0) if isinstance(action, torch.Tensor) else torch.tensor([action])
             single_sample = True
+        
+        # Ensure action is tensor on correct device
+        if not isinstance(action, torch.Tensor):
+            action = torch.tensor([action], device=state.device)
+        else:
+            action = action.to(state.device)
+        
+        # Ensure action has correct shape
+        if action.dim() == 0:
+            action = action.unsqueeze(0)
         
         with torch.no_grad():
             _, pred_next_features, actual_next_features = self.forward(state, next_state, action)

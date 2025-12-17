@@ -3,13 +3,7 @@ Training Script for Integrated DRL Models with Real Data
 Supports all 7 algorithms: A3C, A2C, PPO, DQN, SAC, DDPG, VPG
 
 Usage:
-    python train_integrated_main.py --algorithm a3c --episodes 500 --device cuda
-    python train_integrated_main.py --algorithm ppo --episodes 1000 --device cuda --no_icm
-
-All algorithms use:
-1. CNN-based observation (8x11x11 spatial features)
-2. ICM curiosity-driven exploration (optional)
-3. Balanced rewards
+    python train_integrated_main.py --algorithm a3c --episodes 100 --device cuda
 """
 import os
 import sys
@@ -39,12 +33,28 @@ from vpg.integrated_vpg import IntegratedMultiAgentVPG
 # Import CNN environment
 from environment.cnn_env import CNNCropThermalEnv
 
-# Import utilities
-from utils.normalize import NormalizeData
-from utils.process_weather import process_weather_patches
-from utils.prepare_temp import prepare_temp_data_balanced
-from utils.thermal_reader import read_and_patch_thermal_image
-from utils.landcover_reader import read_and_align_landcover_to_thermal
+
+def normalize_array(arr):
+    """Normalize array to [-1, 1] range"""
+    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    min_val, max_val = arr.min(), arr.max()
+    if max_val - min_val < 1e-8:
+        return np.zeros_like(arr)
+    return 2. * (arr - min_val) / (max_val - min_val) - 1.
+
+
+def prepare_temp_data(thermal_data, high_threshold=0.95, medium_threshold=0.85):
+    """Prepare temperature data and create ground truth"""
+    # Clean data
+    thermal_data = np.nan_to_num(thermal_data, nan=0.0)
+    
+    # Normalize
+    normalized = normalize_array(thermal_data)
+    
+    # Create ground truth (fire = 1 where normalized temp > threshold)
+    ground_truth = (normalized > high_threshold).astype(np.float32)
+    
+    return thermal_data, normalized, ground_truth
 
 
 def load_weather_data(weather_tifs: dict) -> dict:
@@ -52,62 +62,75 @@ def load_weather_data(weather_tifs: dict) -> dict:
     weather_data = {}
     for name, path in weather_tifs.items():
         if os.path.exists(path):
-            with rasterio.open(path) as src:
-                weather_data[name] = src.read(1)
-            print(f"  ✓ Loaded {name}: {weather_data[name].shape}")
+            try:
+                with rasterio.open(path) as src:
+                    data = src.read(1)
+                    weather_data[name] = normalize_array(data)
+                print(f"  ✓ Loaded {name}: {data.shape}")
+            except Exception as e:
+                print(f"  ✗ Error loading {name}: {e}")
         else:
             print(f"  ✗ Missing {name}: {path}")
     return weather_data
 
 
-def prepare_training_patches(thermal_path: str, landcover_path: str, weather_data: dict,
-                             patch_size: int = 100, overlap: int = 10):
-    """Prepare training patches from thermal and weather data"""
+def create_patches(thermal_data, weather_data, landcover_data, patch_size=100, stride=50):
+    """Create training patches from data"""
+    height, width = thermal_data.shape
+    patches = []
     
-    print("\n→ Reading thermal patches...")
-    patches, original_shape, patch_coords, transform_affine, src_crs = read_and_patch_thermal_image(
-        thermal_path, patch_size, overlap
-    )
-    print(f"  Created {len(patches)} thermal patches")
+    for y in range(0, height - patch_size + 1, stride):
+        for x in range(0, width - patch_size + 1, stride):
+            thermal_patch = thermal_data[y:y+patch_size, x:x+patch_size]
+            
+            # Skip invalid patches
+            if np.all(thermal_patch == 0) or np.isnan(thermal_patch).any():
+                continue
+            
+            # Normalize thermal patch
+            _, normalized_thermal, ground_truth = prepare_temp_data(thermal_patch)
+            
+            # Skip if no fire pixels
+            fire_ratio = np.sum(ground_truth) / ground_truth.size
+            if fire_ratio == 0 or fire_ratio == 1:
+                continue
+            
+            # Extract weather patches
+            weather_patches = {}
+            for name, data in weather_data.items():
+                if data.shape == thermal_data.shape:
+                    weather_patches[name] = data[y:y+patch_size, x:x+patch_size]
+                else:
+                    # Resize or create zeros
+                    weather_patches[name] = np.zeros((patch_size, patch_size))
+            
+            # Landcover patch
+            if landcover_data is not None and landcover_data.shape == thermal_data.shape:
+                lc_patch = landcover_data[y:y+patch_size, x:x+patch_size]
+            else:
+                lc_patch = np.ones((patch_size, patch_size))
+            
+            # Find start position (hottest point)
+            start_pos = np.unravel_index(np.argmax(normalized_thermal), normalized_thermal.shape)
+            
+            patches.append({
+                'thermal_data': normalized_thermal,
+                'start_pos': start_pos,
+                'weather_patches': weather_patches,
+                'landcover_data': lc_patch,
+                'ground_truth': ground_truth,
+                'fire_ratio': fire_ratio
+            })
     
-    print("\n→ Aligning landcover...")
-    landcover_patches = read_and_align_landcover_to_thermal(
-        landcover_path, thermal_path, patch_size, overlap
-    )
-    
-    print("\n→ Preparing valid patches...")
-    patch_list = []
-    
-    for i, (T_Celsius, landcover_patch, coord) in enumerate(zip(patches, landcover_patches, patch_coords)):
-        T_Celsius, normalized_temp, y_true_binary, _, _ = prepare_temp_data_balanced(T_Celsius)
-        
-        # Skip invalid patches
-        if np.any(T_Celsius <= 0.0) or np.sum(y_true_binary) == 0:
-            continue
-        
-        weather_patches = process_weather_patches(weather_data, coord)
-        
-        patch_list.append({
-            'index': i,
-            'thermal_data': normalized_temp,
-            'start_pos': np.unravel_index(np.argmax(T_Celsius), T_Celsius.shape),
-            'weather_patches': weather_patches,
-            'landcover_data': landcover_patch,
-            'y_true_binary': y_true_binary,
-            'fire_ratio': np.sum(y_true_binary) / y_true_binary.size,
-            'coord': coord
-        })
-    
-    print(f"  Created {len(patch_list)} valid patches")
-    return patch_list, original_shape, transform_affine, src_crs
+    return patches
 
 
-def create_cnn_env_factory(patch_list, patch_size=11):
+def create_cnn_env_factory(patch_list, obs_patch_size=11):
     """Create factory function for CNN environment"""
     
     def env_factory():
-        # Weighted sampling - prefer patches with more fire pixels
-        weights = [1.0 / (p['fire_ratio'] + 0.1) for p in patch_list]
+        # Weighted sampling - prefer patches with moderate fire ratio
+        weights = [1.0 / (abs(p['fire_ratio'] - 0.1) + 0.1) for p in patch_list]
         weights = np.array(weights) / np.sum(weights)
         patch = np.random.choice(patch_list, p=weights)
         
@@ -117,7 +140,7 @@ def create_cnn_env_factory(patch_list, patch_size=11):
             weather_patches=patch['weather_patches'],
             landcover_data=patch['landcover_data'],
             max_steps=min(200, patch['thermal_data'].size // 10),
-            patch_size=patch_size,
+            patch_size=obs_patch_size,
             verbose=False
         )
     
@@ -179,7 +202,7 @@ def train_model(trainer, algorithm: str, max_episodes: int, steps_per_update: in
         
         # Get average reward
         avg_reward = np.mean([a.reward_mean for a in trainer.agents])
-        rewards_history.append(avg_reward)
+        rewards_history.append(float(avg_reward))
         
         # Log progress
         if episode % 10 == 0:
@@ -220,6 +243,8 @@ def main():
                        help="Device to use (cuda/cpu)")
     parser.add_argument('--no_icm', action='store_true',
                        help="Disable ICM exploration")
+    parser.add_argument('--use_synthetic', action='store_true',
+                       help="Use synthetic data instead of real data")
     
     args = parser.parse_args()
     
@@ -233,28 +258,79 @@ def main():
     print(f"ICM Exploration: {'Disabled' if args.no_icm else 'Enabled'}")
     print("="*60)
     
-    print("\n→ Loading weather data...")
-    weather_tifs = {
-        'humidity': PATHS.get('humidity_tif', 'database/aligned_humidity.tif'),
-        'wind_speed': PATHS.get('wind_speed_tif', 'database/aligned_wind_speed.tif'),
-        'soil_temp': PATHS.get('soil_temp_tif', 'database/aligned_soil_temp.tif'),
-        'soil_moisture': PATHS.get('soil_moisture_tif', 'database/aligned_soil_moisture.tif'),
-        'rainfall': PATHS.get('rainfall_tif', 'database/aligned_rainfall.tif'),
-        'ndmi': PATHS.get('ndmi_tif', 'database/aligned_ndmi.tif'),
-        'dem': PATHS.get('dem_tif', 'database/aligned_dem.tif'),
-    }
-    weather_data = load_weather_data(weather_tifs)
+    if args.use_synthetic:
+        # Use synthetic data for testing
+        print("\n→ Using SYNTHETIC data for testing...")
+        
+        # Create synthetic thermal data with fire spots
+        thermal_data = np.random.rand(200, 200).astype(np.float32)
+        thermal_data[80:100, 80:100] = 0.95 + 0.05 * np.random.rand(20, 20)
+        thermal_data[150:170, 30:50] = 0.90 + 0.10 * np.random.rand(20, 20)
+        
+        weather_data = {
+            'humidity': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'wind_speed': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'soil_temp': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'soil_moisture': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'rainfall': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'ndmi': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+            'dem': np.random.rand(200, 200).astype(np.float32) * 2 - 1,
+        }
+        
+        landcover_data = np.ones((200, 200), dtype=np.float32)
+        
+        _, normalized_thermal, _ = prepare_temp_data(thermal_data)
+        
+    else:
+        # Load real data
+        print("\n→ Loading REAL data...")
+        
+        thermal_path = PATHS.get('thermal_tif', 'data/thermal_raster_final.tif')
+        landcover_path = PATHS.get('landcover_tif', 'database/aligned_landcover.tif')
+        
+        # Check if thermal file exists
+        if not os.path.exists(thermal_path):
+            print(f"ERROR: Thermal file not found: {thermal_path}")
+            print("Try running with --use_synthetic flag for testing")
+            return
+        
+        # Load thermal
+        print(f"  Loading thermal: {thermal_path}")
+        with rasterio.open(thermal_path) as src:
+            thermal_data = src.read(1)
+        _, normalized_thermal, _ = prepare_temp_data(thermal_data)
+        print(f"  ✓ Thermal shape: {thermal_data.shape}")
+        
+        # Load weather
+        print("\n→ Loading weather data...")
+        weather_tifs = {
+            'humidity': PATHS.get('humidity_tif', 'database/aligned_humidity.tif'),
+            'wind_speed': PATHS.get('wind_speed_tif', 'database/aligned_wind_speed.tif'),
+            'soil_temp': PATHS.get('soil_temp_tif', 'database/aligned_soil_temp.tif'),
+            'soil_moisture': PATHS.get('soil_moisture_tif', 'database/aligned_soil_moisture.tif'),
+            'rainfall': PATHS.get('rainfall_tif', 'database/aligned_rainfall.tif'),
+            'ndmi': PATHS.get('ndmi_tif', 'database/aligned_ndmi.tif'),
+            'dem': PATHS.get('dem_tif', 'database/aligned_dem.tif'),
+        }
+        weather_data = load_weather_data(weather_tifs)
+        
+        # Load landcover
+        if os.path.exists(landcover_path):
+            with rasterio.open(landcover_path) as src:
+                landcover_data = src.read(1)
+            print(f"  ✓ Landcover shape: {landcover_data.shape}")
+        else:
+            landcover_data = np.ones_like(thermal_data)
+            print(f"  ✗ Landcover not found, using ones")
     
-    # Prepare patches
-    thermal_path = PATHS.get('thermal_tif', 'data/thermal_raster_final.tif')
-    landcover_path = PATHS.get('landcover_tif', 'database/aligned_landcover.tif')
-    
-    patch_list, original_shape, transform_affine, src_crs = prepare_training_patches(
-        thermal_path, landcover_path, weather_data
-    )
+    # Create patches
+    print("\n→ Creating training patches...")
+    patch_list = create_patches(normalized_thermal, weather_data, landcover_data)
+    print(f"  ✓ Created {len(patch_list)} valid patches")
     
     if len(patch_list) == 0:
         print("ERROR: No valid patches found!")
+        print("Try running with --use_synthetic flag for testing")
         return
     
     # Create environment factory
@@ -285,7 +361,7 @@ def main():
     
     results = {
         'algorithm': args.algorithm,
-        'best_reward': best_reward,
+        'best_reward': float(best_reward),
         'episodes': args.episodes,
         'use_icm': not args.no_icm,
         'rewards_history': rewards_history,
@@ -293,7 +369,7 @@ def main():
     }
     
     with open(f"{results_dir}/training_results.json", 'w') as f:
-        json.dump(results, f, indent=2, default=lambda x: float(x) if isinstance(x, np.floating) else x)
+        json.dump(results, f, indent=2)
     
     print(f"\n✓ Results saved to {results_dir}/training_results.json")
 

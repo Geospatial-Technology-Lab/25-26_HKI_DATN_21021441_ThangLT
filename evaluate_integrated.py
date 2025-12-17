@@ -124,32 +124,65 @@ def compute_metrics(predictions, ground_truth, threshold=0.5):
     y_pred_proba = predictions.flatten()
     y_pred = (y_pred_proba >= threshold).astype(int)
     
-    # Skip if no positive samples
-    if np.sum(y_true) == 0 or np.sum(y_true) == len(y_true):
+    # Debug info
+    print(f"    Ground truth: {np.sum(y_true):.0f} fire pixels / {len(y_true)} total")
+    print(f"    Predictions: min={y_pred_proba.min():.4f}, max={y_pred_proba.max():.4f}, mean={y_pred_proba.mean():.4f}")
+    print(f"    Predicted fire: {np.sum(y_pred)} pixels (threshold={threshold})")
+    
+    # Check for valid data
+    if np.sum(y_true) == 0:
+        print("    Warning: No fire pixels in ground truth")
+        # Use lower threshold for prediction count
+        threshold = y_pred_proba.mean()
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        print(f"    Using adaptive threshold: {threshold:.4f}, fire predictions: {np.sum(y_pred)}")
+    
+    if np.sum(y_true) == len(y_true):
+        print("    Warning: All pixels are fire in ground truth")
         return None
     
     try:
-        metrics = {
-            'auc_roc': float(roc_auc_score(y_true, y_pred_proba)),
-            'auc_pr': float(average_precision_score(y_true, y_pred_proba)),
-            'f1': float(f1_score(y_true, y_pred, zero_division=0)),
-            'precision': float(precision_score(y_true, y_pred, zero_division=0)),
-            'recall': float(recall_score(y_true, y_pred, zero_division=0)),
-        }
+        # Basic metrics
+        metrics = {}
         
-        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        # AUC requires both classes
+        if len(np.unique(y_true)) > 1:
+            metrics['auc_roc'] = float(roc_auc_score(y_true, y_pred_proba))
+            metrics['auc_pr'] = float(average_precision_score(y_true, y_pred_proba))
+        else:
+            metrics['auc_roc'] = 0.5
+            metrics['auc_pr'] = np.mean(y_true)
+        
+        metrics['f1'] = float(f1_score(y_true, y_pred, zero_division=0))
+        metrics['precision'] = float(precision_score(y_true, y_pred, zero_division=0))
+        metrics['recall'] = float(recall_score(y_true, y_pred, zero_division=0))
+        
+        # Confusion matrix
+        cm = confusion_matrix(y_true, y_pred)
+        if cm.shape == (2, 2):
+            tn, fp, fn, tp = cm.ravel()
+        else:
+            # Handle single class case
+            if np.sum(y_true) == 0:
+                tn, fp, fn, tp = cm[0, 0], 0, 0, 0
+            else:
+                tn, fp, fn, tp = 0, 0, 0, cm[0, 0]
+        
         metrics.update({
             'true_positives': int(tp),
             'false_positives': int(fp),
             'true_negatives': int(tn),
             'false_negatives': int(fn),
-            'accuracy': float((tp + tn) / (tp + tn + fp + fn))
+            'accuracy': float((tp + tn) / max(1, tp + tn + fp + fn))
         })
+        
+        return metrics
+        
     except Exception as e:
-        print(f"Error computing metrics: {e}")
+        print(f"    Error computing metrics: {e}")
+        import traceback
+        traceback.print_exc()
         return None
-    
-    return metrics
 
 
 def plot_results(predictions, ground_truth, metrics, save_path, algorithm):

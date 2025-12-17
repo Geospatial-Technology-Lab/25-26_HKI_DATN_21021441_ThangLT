@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Data files (large)
+*.tif
+*.tiff
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Model checkpoints (can be large)
+*.pth
+*.pt
+*.ckpt
+
+# Logs
+logs/
+*.log
+
+# Results and outputs (can be regenerated)
+*_results/
+*_plots/
+*_models/
+comparison_plots/
+feature_importance_*/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Database folder (contains large aligned TIF files)
+database/
+
+# Data folder (contains large raster files)
+data/
+
+# Cache
+.cache/

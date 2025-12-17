@@ -52,11 +52,23 @@ def normalize_array(arr):
     return 2. * (arr - min_val) / (max_val - min_val) - 1.
 
 
-def prepare_temp_data(thermal_data, high_threshold=0.95):
-    """Prepare temperature data and create ground truth"""
+def prepare_temp_data(thermal_data, high_threshold=0.7):
+    """Prepare temperature data and create ground truth
+    
+    Note: Using 0.7 threshold to capture more potential fire areas.
+    Adjust this based on your data distribution.
+    """
     thermal_data = np.nan_to_num(thermal_data, nan=0.0)
     normalized = normalize_array(thermal_data)
+    
+    # Fire = high temperature areas
     ground_truth = (normalized > high_threshold).astype(np.float32)
+    
+    # Debug: fire pixel count
+    fire_count = np.sum(ground_truth)
+    total = ground_truth.size
+    print(f"    Fire detection: {fire_count:.0f} / {total} pixels ({100*fire_count/total:.2f}%)")
+    
     return thermal_data, normalized, ground_truth
 
 

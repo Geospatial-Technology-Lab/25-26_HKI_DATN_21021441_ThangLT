@@ -43,8 +43,11 @@ def normalize_array(arr):
     return 2. * (arr - min_val) / (max_val - min_val) - 1.
 
 
-def prepare_temp_data(thermal_data, high_threshold=0.95, medium_threshold=0.85):
-    """Prepare temperature data and create ground truth"""
+def prepare_temp_data(thermal_data, high_threshold=0.7, medium_threshold=0.5):
+    """Prepare temperature data and create ground truth
+    
+    Note: Lower threshold (0.7) to include more fire-like areas for training
+    """
     # Clean data
     thermal_data = np.nan_to_num(thermal_data, nan=0.0)
     
@@ -134,9 +137,9 @@ def create_cnn_env_factory(patch_list, obs_patch_size=11):
         weights = np.array(weights) / np.sum(weights)
         patch = np.random.choice(patch_list, p=weights)
         
-        # Use shorter max_steps so episodes complete and rewards are tracked
-        max_steps = min(50, patch['thermal_data'].size // 20)
-        max_steps = max(20, max_steps)  # At least 20 steps
+        # Use 200 steps for better learning (100x100 patch has 10000 cells)
+        # Enough steps to explore but still complete episodes
+        max_steps = 200
         
         return CNNCropThermalEnv(
             thermal_data=patch['thermal_data'],

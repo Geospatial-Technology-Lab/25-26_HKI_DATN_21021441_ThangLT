@@ -89,6 +89,8 @@ def process_weather_patches(weather_data, coord, patch_size=100):
         patch_size: size of patch (default 100)
     """
     y_start, x_start = coord
+    y_start, x_start = int(y_start), int(x_start)  # Ensure integers
+    
     patches = {}
     for name, data in weather_data.items():
         y_end = min(y_start + patch_size, data.shape[0])

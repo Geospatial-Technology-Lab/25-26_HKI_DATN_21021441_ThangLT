@@ -52,18 +52,20 @@ class CNNCropThermalEnv(gym.Env):
         
         self.landcover_data = landcover_data if landcover_data is not None else np.ones_like(thermal_data)
         
-        # Balanced reward parameters (same as improved env_src.py)
-        self.true_positive_reward = 100.0
-        self.false_positive_penalty = 50.0
+        # REBALANCED reward parameters for better learning
+        # Key: Lower penalties to encourage exploration and prediction
+        self.true_positive_reward = 10.0       # Reward for correct fire prediction
+        self.false_positive_penalty = 5.0      # Much lower penalty (was 50)
         self.true_negative_reward = 1.0
-        self.false_negative_penalty = 100.0
+        self.false_negative_penalty = 0.0      # No penalty, just no reward
         self.exploration_reward = 0.5
-        self.movement_cost = 0.1
-        self.proximity_reward_scale = 5.0
-        self.discovery_bonus = 2.0
+        self.movement_cost = 0.05              # Lower movement cost
+        self.proximity_reward_scale = 2.0
+        self.discovery_bonus = 1.0
         
-        self.high_temp_threshold = high_temp_threshold
-        self.medium_temp_threshold = medium_temp_threshold
+        # Lower thresholds for fire detection (more fire pixels to learn from)
+        self.high_temp_threshold = 0.7         # Was 0.95 - too strict!
+        self.medium_temp_threshold = 0.5       # Was 0.85
         self.height, self.width = thermal_data.shape
         
         # Action space: 6 actions (U, D, L, R, Stay, Predict)
@@ -318,21 +320,29 @@ class CNNCropThermalEnv(gym.Env):
     def _handle_fire_prediction(self) -> float:
         x, y = self.current_pos
         
+        # Small penalty for repeated predictions
         if self.fire_predictions[x, y]:
-            return -2.0
+            return -0.5
         
         self.fire_predictions[x, y] = True
         self.prediction_counts[x, y] += 1
         self.total_predictions += 1
         
         is_fire_gt = self.fire_ground_truth[x, y]
+        current_temp = self.thermal_data[x, y]
         
         if is_fire_gt:
+            # True positive - big reward!
             self.true_positives += 1
             reward = self.true_positive_reward
         else:
             self.false_positives += 1
-            reward = -self.false_positive_penalty
+            # Graduated penalty based on temperature
+            # Lower penalty if temp is high (reasonable guess)
+            if current_temp >= self.medium_temp_threshold:
+                reward = -self.false_positive_penalty * 0.5  # Half penalty
+            else:
+                reward = -self.false_positive_penalty
         
         return reward
     

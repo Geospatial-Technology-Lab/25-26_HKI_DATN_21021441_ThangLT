@@ -105,7 +105,7 @@ pip install numpy pandas matplotlib scipy rasterio tqdm gym scikit-learn
 
 > Uses `environment/env_src.py` with **1D observation** (16 features vector)
 
-### Training with CLI Arguments
+### Training Commands
 
 ```bash
 # A3C (best performing)
@@ -117,21 +117,45 @@ python dqn/dqn_main.py --episodes 100 --device cuda
 # SAC
 python sac/sac_main.py --episodes 100 --device cuda
 
-# With all options
-python a3c/a3c_main.py --episodes 200 --device cuda --workers 8 --steps 2000 --force_retrain
+# VPG (with optional pure REINFORCE mode)
+python vpg/vpg_main.py --episodes 100 --device cuda
+python vpg/vpg_main.py --episodes 100 --device cuda --no_baseline  # Pure REINFORCE
+
+# DDPG
+python ddpg/ddpg_main.py --episodes 100 --device cuda
+
+# A2C
+python a2c/a2c_main.py --episodes 100 --device cuda
 ```
 
-### CLI Options (Original)
+### CLI Options (All Original Algorithms)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--mode` | both | train, eval, or both |
+| `--mode` | both | `train`, `eval`, or `both` |
 | `--episodes` | 100 | Number of training episodes |
-| `--device` | auto | cuda, cpu, or auto |
+| `--device` | auto | `cuda`, `cpu`, or `auto` |
 | `--workers` | 10 | Number of parallel workers |
-| `--steps` | 2000 | Steps per update |
-| `--save_interval` | 10 | Save every N episodes |
-| `--force_retrain` | False | Force retraining |
+| `--steps` | varies | Steps per update (A3C: 2000, DQN/SAC: 1000) |
+| `--save_interval` | varies | Save model every N episodes |
+| `--force_retrain` | False | Force retraining even if model exists |
+| `--no_baseline` | False | (VPG only) Use pure REINFORCE |
+
+### Examples
+
+```bash
+# Train A3C with 200 episodes on GPU
+python a3c/a3c_main.py --episodes 200 --device cuda --workers 8
+
+# Force retrain DQN
+python dqn/dqn_main.py --episodes 100 --force_retrain
+
+# VPG without value baseline (pure REINFORCE)
+python vpg/vpg_main.py --episodes 100 --no_baseline
+
+# Run on CPU with fewer workers
+python sac/sac_main.py --episodes 50 --device cpu --workers 4
+```
 
 ### Output (Original)
 - **GeoTIFF prediction maps** in `{algorithm}_results/`
@@ -164,7 +188,7 @@ python train_integrated_main.py --algorithm sac --episodes 500 --device cuda
 python train_integrated_main.py --algorithm ppo --episodes 500 --device cuda
 
 # Disable ICM exploration
-python train_integrated_main.py --algorithm a3c --episodes 500 --device cuda --no_icm
+python train_integrated_main.py --algorithm a3c --episodes 500 --no_icm
 
 # Use synthetic data (for testing)
 python train_integrated_main.py --algorithm a3c --episodes 100 --use_synthetic
@@ -174,9 +198,9 @@ python train_integrated_main.py --algorithm a3c --episodes 100 --use_synthetic
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--algorithm` | a3c | a3c, a2c, ppo, dqn, sac, ddpg, vpg |
+| `--algorithm` | a3c | `a3c`, `a2c`, `ppo`, `dqn`, `sac`, `ddpg`, `vpg` |
 | `--episodes` | 500 | Number of training episodes |
-| `--device` | auto | cuda, cpu, or auto |
+| `--device` | auto | `cuda`, `cpu`, or `auto` |
 | `--agents` | 4 | Number of parallel agents |
 | `--steps` | 100 | Steps per update |
 | `--no_icm` | False | Disable ICM exploration |
@@ -202,9 +226,6 @@ python evaluate_integrated_full.py --algorithm a3c --device cuda
 
 # Quick evaluation (sample region)
 python evaluate_integrated.py --algorithm a3c --device cuda
-
-# Compare all algorithms
-python evaluate_integrated_full.py --algorithm all --device cuda
 ```
 
 ---
@@ -250,7 +271,7 @@ DRL_Thesis/
 │   ├── a3c_main.py         # Original training (with CLI)
 │   └── integrated_a3c.py   # CNN+ICM version
 │
-├── [other algorithms]/     # Similar structure
+├── [other algorithms]/     # Similar structure (a2c, dqn, sac, ddpg, vpg, ppo)
 │
 ├── train_integrated_main.py      # Unified CNN+ICM training
 ├── evaluate_integrated_full.py   # Full evaluation

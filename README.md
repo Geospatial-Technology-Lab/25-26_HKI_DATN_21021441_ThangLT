@@ -105,40 +105,38 @@ pip install numpy pandas matplotlib scipy rasterio tqdm gym scikit-learn
 
 > Uses `environment/env_src.py` with **1D observation** (16 features vector)
 
-### Training
+### Training with CLI Arguments
 
 ```bash
 # A3C (best performing)
-cd a3c
-python a3c_main.py
+python a3c/a3c_main.py --episodes 100 --device cuda
 
 # DQN
-cd dqn
-python dqn_main.py
+python dqn/dqn_main.py --episodes 100 --device cuda
 
 # SAC
-cd sac
-python sac_main.py
+python sac/sac_main.py --episodes 100 --device cuda
 
-# PPO
-cd ppo
-python test2.py
-
-# Other algorithms
-cd ddpg && python ddpg_main.py
-cd vpg && python vpg_main.py
-cd a2c && python a2c_main.py
+# With all options
+python a3c/a3c_main.py --episodes 200 --device cuda --workers 8 --steps 2000 --force_retrain
 ```
+
+### CLI Options (Original)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--mode` | both | train, eval, or both |
+| `--episodes` | 100 | Number of training episodes |
+| `--device` | auto | cuda, cpu, or auto |
+| `--workers` | 10 | Number of parallel workers |
+| `--steps` | 2000 | Steps per update |
+| `--save_interval` | 10 | Save every N episodes |
+| `--force_retrain` | False | Force retraining |
 
 ### Output (Original)
 - **GeoTIFF prediction maps** in `{algorithm}_results/`
 - **CSV results** with per-patch metrics
 - **Confusion maps** showing TP/FP/TN/FN
-
-### Key Features (Original)
-- 1D observation space: 16 features (position, temperature, weather stats)
-- LRU cache for fast observation retrieval
-- Batch processing support
 
 ---
 
@@ -172,16 +170,19 @@ python train_integrated_main.py --algorithm a3c --episodes 500 --device cuda --n
 python train_integrated_main.py --algorithm a3c --episodes 100 --use_synthetic
 ```
 
-**Options:**
-```
---algorithm   : a3c, a2c, ppo, dqn, sac, ddpg, vpg
---episodes    : Number of training episodes (default: 500)
---device      : cuda or cpu
---no_icm      : Disable ICM exploration
---use_synthetic : Use synthetic data for testing
-```
+### CLI Options (Integrated)
 
-### Generate Prediction Raster (Integrated)
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--algorithm` | a3c | a3c, a2c, ppo, dqn, sac, ddpg, vpg |
+| `--episodes` | 500 | Number of training episodes |
+| `--device` | auto | cuda, cpu, or auto |
+| `--agents` | 4 | Number of parallel agents |
+| `--steps` | 100 | Steps per update |
+| `--no_icm` | False | Disable ICM exploration |
+| `--use_synthetic` | False | Use synthetic data |
+
+### Generate Prediction Raster
 
 ```bash
 # Generate full GeoTIFF fire probability map
@@ -193,7 +194,7 @@ python generate_prediction_raster.py --algorithm a3c --device cuda
 - `a3c_results/a3c_fire_binary.tif` - Binary fire map
 - `a3c_results/raster_metrics.json` - Evaluation metrics
 
-### Evaluation (Integrated)
+### Evaluation
 
 ```bash
 # Evaluate on all patches
@@ -246,7 +247,7 @@ DRL_Thesis/
 │
 ├── a3c/
 │   ├── a3c.py              # A3C algorithm
-│   ├── a3c_main.py         # Original training script
+│   ├── a3c_main.py         # Original training (with CLI)
 │   └── integrated_a3c.py   # CNN+ICM version
 │
 ├── [other algorithms]/     # Similar structure

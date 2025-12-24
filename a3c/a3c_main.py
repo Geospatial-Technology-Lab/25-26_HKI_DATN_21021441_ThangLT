@@ -810,8 +810,27 @@ def enhanced_a3c_main_with_real_data(thermal_path: str,
             return None, trainer
 
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="A3C Training and Evaluation for Wildfire Detection")
+    parser.add_argument('--mode', type=str, default='both', choices=['train', 'eval', 'both'],
+                       help="Mode: train, eval, or both (default: both)")
+    parser.add_argument('--episodes', type=int, default=100,
+                       help="Number of training episodes (default: 100)")
+    parser.add_argument('--device', type=str, default='auto',
+                       help="Device: cuda, cpu, or auto (default: auto)")
+    parser.add_argument('--workers', type=int, default=10,
+                       help="Number of parallel workers (default: 10)")
+    parser.add_argument('--steps', type=int, default=2000,
+                       help="Steps per update (default: 2000)")
+    parser.add_argument('--save_interval', type=int, default=10,
+                       help="Save model every N episodes (default: 10)")
+    parser.add_argument('--force_retrain', action='store_true',
+                       help="Force retraining even if model exists")
+    
+    args = parser.parse_args()
+    
     # Import centralized configuration
-    import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
         from config import get_config, get_thermal_path, get_landcover_path, get_weather_tifs
@@ -821,27 +840,13 @@ if __name__ == "__main__":
         landcover_path = get_landcover_path()
         weather_tifs = get_weather_tifs()
         
-        # Use config for training parameters
-        num_workers = config.training.num_workers
-        max_episodes = config.training.max_episodes
-        save_interval = config.training.save_interval
-        steps_per_update = config.training.steps_per_update
-        device = config.training.get_device()
-        
         print("Using centralized configuration from config.py")
         
     except ImportError:
         print("[WARNING] config.py not found, using fallback paths")
-        # Fallback to relative paths
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         thermal_path = os.path.join(base_dir, 'data/thermal_raster_final.tif')
         landcover_path = os.path.join(base_dir, 'database/aligned_landcover.tif')
-        
-        num_workers = 10
-        max_episodes = 1000
-        save_interval = 10
-        steps_per_update = 2000
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
         weather_tifs = {
             'soil_moisture': os.path.join(base_dir, 'database/aligned_soil_moisture.tif'),
@@ -853,9 +858,21 @@ if __name__ == "__main__":
             'ndmi': os.path.join(base_dir, 'database/aligned_ndmi.tif')
         }
 
+    # Set device
+    if args.device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    else:
+        device = args.device
+
+    print("="*60)
+    print("A3C WILDFIRE DETECTION")
+    print("="*60)
+    print(f"Mode: {args.mode}")
     print(f"Device: {device}")
-    print(f"Thermal path: {thermal_path}")
-    print(f"Landcover path: {landcover_path}")
+    print(f"Episodes: {args.episodes}")
+    print(f"Workers: {args.workers}")
+    print(f"Steps per update: {args.steps}")
+    print("="*60)
     
     try:
         results, trainer = enhanced_a3c_main_with_real_data(
@@ -863,13 +880,13 @@ if __name__ == "__main__":
             thermal_path=thermal_path,
             landcover_path=landcover_path,
             alignment_method='match_pixels',
-            num_workers=num_workers,
-            max_episodes=max_episodes,
+            num_workers=args.workers,
+            max_episodes=args.episodes,
             device=device,
-            save_interval=save_interval,
-            steps_per_update=steps_per_update,
-            force_retrain=False,  # SET TO TRUE FOR RETRAINING WITH IMPROVED MODEL
-            use_parallel=True  # ENABLED: Use parallel experience collection
+            save_interval=args.save_interval,
+            steps_per_update=args.steps,
+            force_retrain=args.force_retrain,
+            use_parallel=True
         )
 
         if results is not None:
@@ -878,8 +895,6 @@ if __name__ == "__main__":
             print("="*80)
             print(f"Results saved to: a3c_results/a3c_results_summary.csv")
             print(f"Best model saved to: a3c_models/best_a3c_model.pth")
-            print(f"Training plots saved to: a3c_plots/")
-            print(f"Training logs saved to: logs/")
         else:
             print("\n[WARNING] Pipeline completed but no results generated")
         

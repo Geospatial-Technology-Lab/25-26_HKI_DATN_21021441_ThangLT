@@ -4,7 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Bachelor's Thesis - University of Engineering and Technology, Vietnam National University Hanoi**
+**Engineer's Thesis - University of Engineering and Technology, Vietnam National University Hanoi**
 
 A comprehensive framework applying Deep Reinforcement Learning algorithms for wildfire hotspot detection using thermal imagery and multi-source geospatial data.
 
